@@ -1,0 +1,67 @@
+
+name: Build dotnet application
+
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        description: Platform to execute on
+        type: string
+        default: ubuntu-latest
+        
+      dotnet-version:
+        description: Version of dotnet to use
+        type: string
+        default: 5.0.x
+      
+      project-folder:
+        description: The folder containing the project to build
+        type: string
+        default: .
+        
+      run-tests:
+        description: Run tests
+        type: boolean
+        default: true
+      
+      publish-configuration:
+        description: Configuration to publish
+        type: string
+        default: Release
+        
+      artifact-name:
+        description: Name of the artifact to upload
+        type: string
+        default: drop
+    
+jobs:
+  build:
+    name: Build dotnet app
+    
+    runs-on: ${{ inputs.runs-on }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.project-folder }}
+    
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Test
+        if: ${{ inputs.test }}
+        run: dotnet test --no-build --verbosity normal
+      - name: Publish
+        run: dotnet publish -c ${{ inputs.publish-configuration }} -o wdrop
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2.2.2
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.project-folder }}/wdrop/**
+          if-no-files-found: error
+
